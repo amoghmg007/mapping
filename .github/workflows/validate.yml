@@ -34,6 +34,8 @@ jobs:
           from pathlib import Path
           html = Path("index.html").read_text(encoding="utf-8")
           assert "const PRESETS" in html
-          assert "No mission beacons placed yet" in html
-          print("Verified checkpoint map starts without invented locations.")
+          assert "DEFAULT_CHECKPOINTS" in html and "IS & CS Block" in html and "College Canteen" in html
+          assert "new THREE.ExtrudeGeometry" in html and "MapServer/tile/" in html
+          assert "function setView3D(on)" in html and "mp3d-focus" in html
+          print("Verified real mapped landmarks, 3D building geometry, and selectable 2D/3D views.")
           PY
