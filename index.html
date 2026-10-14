@@ -70,7 +70,7 @@ const PRESETS=[
 {id:'cp3',name:'Mystery beacon 03',short:'03',kind:'checkpoint'},
 {id:'cp4',name:'Mystery beacon 04',short:'04',kind:'checkpoint'},
 {id:'finish',name:'Final discovery',short:'F',kind:'finish'}];
-let stored=loadData(),player=null,playerMarker=null,playerHeading=0,tracking=null,watching=false,activeId=null,preview=false,placing=false,view3d=false,scanTimer=null,toastTimer=null,xp=Number(stored.xp)||0,scanOn=false,routeCoordinates=null;
+let stored=loadData(),player=null,playerMarker=null,playerHeading=0,tracking=null,watching=false,activeId=null,preview=false,placing=false,view3d=false,scanTimer=null,toastTimer=null,xp=Number(stored.xp)||0,scanOn=false,routeCoordinates=null,walkTimer=null;
 const $=id=>document.getElementById(id);
 const map=new maplibregl.Map({
 container:'map',center:[CAMPUS.lng,CAMPUS.lat],zoom:18.2,pitch:0,bearing:0,antialias:true,
@@ -120,7 +120,51 @@ function updateNearbyDistance(){if(!player)return;const pending=stored.checkpoin
 function distance(a,b,c,d){const r=Math.PI/180,da=(c-a)*r,db=(d-b)*r,h=Math.sin(da/2)**2+Math.cos(a*r)*Math.cos(c*r)*Math.sin(db/2)**2;return 6371000*2*Math.atan2(Math.sqrt(h),Math.sqrt(1-h))}
 function discover(){const p=stored.checkpoints.find(p=>p.id===activeId);if(!p){if(preview){scan();return}toast('Select or place a checkpoint first');return}if(p.done)return;const d=player?distance(player[1],player[0],p.lat,p.lng):Infinity;if(d>35&&!preview){toast('Move within 35 m of the beacon to discover it ('+Math.round(d)+' m away)');return}p.done=true;xp+=50;persist();updateStats();renderAll();showBeacon(p);toast('Discovery logged · +50 XP');if(stored.checkpoints.every(x=>x.done))toast('EXPEDITION COMPLETE — every beacon discovered!')}
 function scan(){if(scanOn){scanOn=false;clearTimeout(scanTimer);$('scanBtn').classList.remove('active');toast('Scan field closed');return}scanOn=true;$('scanBtn').classList.add('active');const center=player||[CAMPUS.lng,CAMPUS.lat];map.flyTo({center,zoom:19.4,pitch:view3d?65:0,duration:400});toast('Scanning nearby map data…');let circle=[];for(let i=0;i<=64;i++){const a=i/64*Math.PI*2;circle.push([center[0]+Math.cos(a)*.00045,center[1]+Math.sin(a)*.00045])}const feature={type:'Feature',properties:{},geometry:{type:'Polygon',coordinates:[circle]}};if(map.getSource('scan-area'))map.getSource('scan-area').setData(feature);else{map.addSource('scan-area',{type:'geojson',data:feature});map.addLayer({id:'scan-fill',type:'fill',source:'scan-area',paint:{'fill-color':'#5ef4df','fill-opacity':.08}});map.addLayer({id:'scan-outline',type:'line',source:'scan-area',paint:{'line-color':'#5ef4df','line-width':2,'line-dasharray':[2,2]}})}scanTimer=setTimeout(()=>{scanOn=false;$('scanBtn').classList.remove('active');if(map.getLayer('scan-fill'))map.removeLayer('scan-fill');if(map.getLayer('scan-outline'))map.removeLayer('scan-outline');if(map.getSource('scan-area'))map.removeSource('scan-area');const near=stored.checkpoints.filter(p=>distance(center[1],center[0],p.lat,p.lng)<70);toast(near.length?near.length+' beacon(s) detected in scan radius':'No configured beacon detected nearby');},3500)}
-function routeToSelected(){const p=stored.checkpoints.find(p=>p.id===activeId);if(!p){toast('Select a checkpoint to navigate');return}if(!player){toast('Enable GPS or enter preview mode first');return}const url='https://www.openstreetmap.org/directions?engine=fossgis_osrm_foot&route='+player[1]+'%2C'+player[0]+'%3B'+p.lat+'%2C'+p.lng;window.open(url,'_blank','noopener,noreferrer')}
+async function animatePreviewRoute(coords,target){
+ if(walkTimer){clearInterval(walkTimer);walkTimer=null}
+ if(!preview||!coords||coords.length<2)return;
+ let i=0;
+ const stride=Math.max(1,Math.floor(coords.length/110));
+ toast('Preview walk started — avatar following the route');
+ walkTimer=setInterval(()=>{
+  i=Math.min(i+stride,coords.length-1);
+  player=coords[i];
+  if(playerMarker)playerMarker.setLngLat(player);
+  else {playerMarker=new maplibregl.Marker({element:playerElement(),anchor:'bottom'}).setLngLat(player).addTo(map)}
+  updateNearbyDistance();
+  if(i>=coords.length-1){
+   clearInterval(walkTimer);walkTimer=null;
+   if(playerMarker)playerMarker.setLngLat(coords[coords.length-1]);
+   player=coords[coords.length-1];
+   toast('Arrived at '+target.name+' · tap Discover to collect XP');
+   const d=stored.checkpoints.find(x=>x.id===target.id);
+   if(d){activeId=d.id;showBeacon(d)}
+  }
+ },95);
+}
+function routeToSelected(){
+ const p=stored.checkpoints.find(p=>p.id===activeId);
+ if(!p){toast('Select a checkpoint to navigate');return}
+ if(!player){toast('Enter preview mode or enable GPS first');return}
+ toast('Calculating campus route…');
+ const start=[player[0],player[1]],end=[+p.lng,+p.lat];
+ const providers=['https://routing.openstreetmap.de/routed-foot/route/v1/driving/','https://router.project-osrm.org/route/v1/driving/'];
+ let result=null;
+ for(const base of providers){try{const resp=await fetch(base+start[0]+','+start[1]+';'+end[0]+','+end[1]+'?overview=full&geometries=geojson');if(!resp.ok)throw Error('Router unavailable');const json=await resp.json();if(json.code!=='Ok'||!json.routes?.length)throw Error('No route returned');result=json.routes[0];break}catch(err){console.warn('Routing provider failed:',err)}}
+ if(!result){toast('Walking route service is unavailable right now');return}
+ const coords=result.geometry.coordinates;
+ if(map.getLayer('game-route-line'))map.removeLayer('game-route-line');
+ if(map.getLayer('game-route-glow'))map.removeLayer('game-route-glow');
+ if(map.getSource('game-route'))map.removeSource('game-route');
+ map.addSource('game-route',{type:'geojson',data:{type:'Feature',properties:{},geometry:result.geometry}});
+ map.addLayer({id:'game-route-glow',type:'line',source:'game-route',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#5ef4df','line-width':11,'line-opacity':0.22,'line-blur':2}});
+ map.addLayer({id:'game-route-line',type:'line',source:'game-route',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#d8ff52','line-width':4,'line-opacity':0.97,'line-dasharray':[1.2,0.6]}});
+ const bounds=new maplibregl.LngLatBounds();coords.forEach(c=>bounds.extend(c));
+ map.fitBounds(bounds,{padding:{top:110,bottom:190,left:45,right:70},maxZoom:19.8,duration:800,pitch:view3d?52:0});
+ const meters=Math.round(result.distance),duration=Math.max(1,Math.round(result.duration/60));
+ toast('Route locked · '+(meters>999?(meters/1000).toFixed(1)+' km':meters+' m')+' · ~'+duration+' min');
+ if(preview)animatePreviewRoute(coords,p);
+}
 $('enterBtn').addEventListener('click',enterExpedition);$('locateBtn').addEventListener('click',locate);$('compassBtn').addEventListener('click',()=>map.easeTo({bearing:0,pitch:view3d?65:0,duration:400}));$('scanBtn').addEventListener('click',scan);$('view2d').addEventListener('click',()=>setView3D(false));$('view3d').addEventListener('click',()=>setView3D(true));$('missionListBtn').addEventListener('click',missionModal);$('adminBtn').addEventListener('click',adminModal);$('nearbyAction').addEventListener('click',routeToSelected);$('missionBtn').addEventListener('click',()=>{if(!activeId){enterExpedition();return}const p=stored.checkpoints.find(p=>p.id===activeId);if(p?.done)return;if(player&&p&&distance(player[1],player[0],p.lat,p.lng)<35)discover();else routeToSelected()});$('modalClose').addEventListener('click',closeModal);$('modalBackdrop').addEventListener('click',e=>{if(e.target===$('modalBackdrop'))closeModal()});
 function enterExpedition(){if(player){map.flyTo({center:player,zoom:19,pitch:view3d?65:0,duration:700});toast('Expedition resumed');return}preview=true;movePreview([CAMPUS.lng,CAMPUS.lat]);map.flyTo({center:player,zoom:19,pitch:view3d?65:0,duration:900});toast('Preview mode — tap anywhere on map to move your avatar.')}
 function movePreview(ll){player=ll;preview=true;if(playerMarker)playerMarker.remove();playerMarker=new maplibregl.Marker({element:playerElement(),anchor:'bottom'}).setLngLat(player).addTo(map);$('enterBtn').innerHTML='<span>◉</span> Preview active';$('nearbyKicker').textContent='FREE ROAM';$('nearbyTitle').textContent='Player location updated';$('nearbySub').textContent=ll[1].toFixed(5)+', '+ll[0].toFixed(5)+' · click map to explore';updateQuest()}
