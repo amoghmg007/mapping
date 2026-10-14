@@ -19,10 +19,10 @@ jobs:
           import re
           from pathlib import Path
           html = Path("index.html").read_text(encoding="utf-8")
-          scripts = re.findall(r'<script(?:\\s[^>]*)?>(.*?)</script\\s*>', html, flags=re.I|re.S)
+          scripts = re.findall(r'<script[^>]*>(.*?)</script>', html, flags=re.I|re.S)
           inline = [s for s in scripts if s.strip()]
           assert inline, "No inline JavaScript found"
-          Path("/tmp/map-inline.js").write_text("\\n".join(inline), encoding="utf-8")
+          Path("/tmp/map-inline.js").write_text(chr(10).join(inline), encoding="utf-8")
           assert 'maplibre-gl' in html and 'view3d?65:0' in html, "Expected game map/3D controls are missing"
           assert "enterExpedition" in html and "geolocation" in html and "loadBuildings" in html, "Expected expedition features are missing"
           print("HTML structure check passed; extracted", len(inline), "inline script(s)")
