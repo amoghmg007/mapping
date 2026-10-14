@@ -169,7 +169,7 @@
         const ring=el.geometry.map(p=>[p.lon,p.lat]);
         const first=ring[0],last=ring[ring.length-1];
         if(first[0]!==last[0]||first[1]!==last[1])ring.push([...first]);
-        return {type:'Feature',id:el.id,properties:{name:el.tags.name||'',building:el.tags.building||'yes',height:el.tags.height||'',levels:el.tags['building:levels']||''},geometry:{type:'Polygon',coordinates:[ring]}};
+        return {type:'Feature',id:el.id,properties:{name:el.tags.name||'',building:el.tags.building||'yes',height:parseFloat(el.tags.height)||null,levels:parseFloat(el.tags['building:levels'])||null},geometry:{type:'Polygon',coordinates:[ring]}};
       });
     if(!features.length)return;
     if(map.getSource('osm-buildings')){map.removeLayer('osm-building-extrusions');map.removeLayer('osm-building-outlines');map.removeSource('osm-buildings')}
@@ -177,7 +177,7 @@
     map.addLayer({id:'osm-building-outlines',type:'line',source:'osm-buildings',paint:{'line-color':'#d6ff3f','line-width':1.15,'line-opacity':0.72}});
     map.addLayer({id:'osm-building-extrusions',type:'fill-extrusion',source:'osm-buildings',layout:{visibility:'none'},paint:{
       'fill-extrusion-color':['case',['has','name'],'#b3c9b2','#778494'],
-      'fill-extrusion-height':['coalesce',['to-number',['get','height']],['*',['to-number',['get','levels'],2],3],6],
+      'fill-extrusion-height':['case',['>', ['to-number',['get','height'],0],0],['to-number',['get','height'],6],['>', ['to-number',['get','levels'],0],0],['*',['to-number',['get','levels'],2],3],6],
       'fill-extrusion-base':0,'fill-extrusion-opacity':0.86,'fill-extrusion-vertical-gradient':true
     }});
     setBuildingModeVisibility();
