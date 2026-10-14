@@ -214,7 +214,7 @@
     if(!currentPosition){toast('First tap Locate me and allow location access');return}
     $('routeBtn').textContent='Routing…';$('routeBtn').disabled=true;
     try{
-      const u='https://router.project-osrm.org/route/v1/foot/'+currentPosition.lng+','+currentPosition.lat+';'+dest.lng+','+dest.lat+'?overview=full&geometries=geojson&steps=true';
+      const u='https://routing.openstreetmap.de/routed-foot/route/v1/driving/'+currentPosition.lng+','+currentPosition.lat+';'+dest.lng+','+dest.lat+'?overview=full&geometries=geojson&steps=true';
       const res=await fetch(u);if(!res.ok)throw Error('Routing service unavailable');const data=await res.json();if(data.code!=='Ok'||!data.routes?.length)throw Error('No walking route found');
       removeRoute();map.addSource('route',{type:'geojson',data:{type:'Feature',properties:{},geometry:data.routes[0].geometry}});
       map.addLayer({id:'route-line',type:'line',source:'route',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#d6ff3f','line-width':5,'line-opacity':.93,'line-blur':.15}});
