@@ -109,7 +109,7 @@
   const map = new maplibregl.Map({
     container:'map',
     center:[CAMPUS.lng,CAMPUS.lat],
-    zoom:17.2, pitch:0, bearing:0,
+    zoom:18.7, pitch:0, bearing:0,
     antialias:true,
     style:{
       version:8,
@@ -130,6 +130,7 @@
   map.on('load', () => {
     addCampusMarker();
     renderCheckpoints();
+    loadBuildingFootprints();
     updateCoords(CAMPUS.lng,CAMPUS.lat);
     if (saved.some(p=>p.lng && p.lat)) {
       const placed = saved.filter(p=>Number.isFinite(p.lng)&&Number.isFinite(p.lat));
@@ -151,6 +152,42 @@
     $('banner').classList.remove('show');
     toast(name+' saved at '+e.lngLat.lat.toFixed(5)+', '+e.lngLat.lng.toFixed(5));
   });
+  async function loadBuildingFootprints(){
+    const query='[out:json][timeout:18];way["building"](around:500,'+CAMPUS.lat+','+CAMPUS.lng+');out geom;';
+    const endpoints=['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter'];
+    let data=null;
+    for(const endpoint of endpoints){
+      try{
+        const response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body:'data='+encodeURIComponent(query)});
+        if(!response.ok)throw Error('Footprint service returned '+response.status);
+        data=await response.json();break;
+      }catch(err){console.warn('OpenStreetMap building footprint request failed:',err)}
+    }
+    if(!data?.elements)return;
+    const features=data.elements.filter(el=>el.type==='way'&&el.tags?.building&&el.geometry?.length>=4)
+      .map(el=>{
+        const ring=el.geometry.map(p=>[p.lon,p.lat]);
+        const first=ring[0],last=ring[ring.length-1];
+        if(first[0]!==last[0]||first[1]!==last[1])ring.push([...first]);
+        return {type:'Feature',id:el.id,properties:{name:el.tags.name||'',building:el.tags.building||'yes',height:el.tags.height||'',levels:el.tags['building:levels']||''},geometry:{type:'Polygon',coordinates:[ring]}};
+      });
+    if(!features.length)return;
+    if(map.getSource('osm-buildings')){map.removeLayer('osm-building-extrusions');map.removeLayer('osm-building-outlines');map.removeSource('osm-buildings')}
+    map.addSource('osm-buildings',{type:'geojson',data:{type:'FeatureCollection',features}});
+    map.addLayer({id:'osm-building-outlines',type:'line',source:'osm-buildings',paint:{'line-color':'#d6ff3f','line-width':1.15,'line-opacity':0.72}});
+    map.addLayer({id:'osm-building-extrusions',type:'fill-extrusion',source:'osm-buildings',layout:{visibility:'none'},paint:{
+      'fill-extrusion-color':['case',['has','name'],'#b3c9b2','#778494'],
+      'fill-extrusion-height':['coalesce',['to-number',['get','height']],['*',['to-number',['get','levels'],2],3],6],
+      'fill-extrusion-base':0,'fill-extrusion-opacity':0.86,'fill-extrusion-vertical-gradient':true
+    }});
+    setBuildingModeVisibility();
+    console.info('Loaded mapped OpenStreetMap building footprints:',features.length);
+  }
+  function setBuildingModeVisibility(){
+    if(!map.getLayer('osm-building-extrusions'))return;
+    map.setLayoutProperty('osm-building-extrusions','visibility',is3d?'visible':'none');
+    map.setLayoutProperty('osm-building-outlines','visibility',is3d?'none':'visible');
+  }
   function loadSaved(){try {const value=JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]'); return Array.isArray(value)?value.filter(x=>x&&typeof x.id==='string'):[]} catch{return []}}
   function persist(){localStorage.setItem(STORAGE_KEY,JSON.stringify(saved))}
   function toast(message){const node=$('toast');node.textContent=message;node.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>node.classList.remove('show'),2800)}
@@ -194,11 +231,11 @@
   function fitToPoints(points){const b=new maplibregl.LngLatBounds();points.forEach(p=>b.extend([p.lng,p.lat]));if(points.length===1)b.extend([points[0].lng+.001,points[0].lat+.001]);map.fitBounds(b,{padding:90,maxZoom:18,duration:500})}
   window.mpSelect=id=>{selectCheckpoint(id);const p=saved.find(p=>p.id===id);if(p)map.flyTo({center:[p.lng,p.lat],zoom:18,duration:400})};
   window.mpDone=id=>{const p=saved.find(p=>p.id===id);if(!p)return;p.done=!p.done;persist();renderCheckpoints();toast(p.done?'Checkpoint marked complete':'Checkpoint marked incomplete')};
-  $('mode2d').addEventListener('click',()=>{is3d=false;map.easeTo({pitch:0,bearing:0,duration:650});$('mode2d').classList.add('active');$('mode3d').classList.remove('active');$('mapModeBadge').textContent='2D VIEW'});
-  $('mode3d').addEventListener('click',()=>{is3d=true;map.easeTo({pitch:58,bearing:-18,duration:850});$('mode3d').classList.add('active');$('mode2d').classList.remove('active');$('mapModeBadge').textContent='3D TILT'});
+  $('mode2d').addEventListener('click',()=>{is3d=false;setBuildingModeVisibility();map.easeTo({pitch:0,bearing:0,duration:650});$('mode2d').classList.add('active');$('mode3d').classList.remove('active');$('mapModeBadge').textContent='2D VIEW'});
+  $('mode3d').addEventListener('click',()=>{is3d=true;setBuildingModeVisibility();map.easeTo({pitch:58,bearing:-18,duration:850});$('mode3d').classList.add('active');$('mode2d').classList.remove('active');$('mapModeBadge').textContent='3D TILT'});
   function setBasemap(isSatellite){satellite=isSatellite;map.setLayoutProperty('satellite','visibility',isSatellite?'visible':'none');map.setLayoutProperty('street','visibility',isSatellite?'none':'visible');$('satelliteBtn').classList.toggle('active',isSatellite);$('streetBtn').classList.toggle('active',!isSatellite)}
   $('satelliteBtn').addEventListener('click',()=>setBasemap(true));$('streetBtn').addEventListener('click',()=>setBasemap(false));
-  $('resetBtn').addEventListener('click',()=>map.flyTo({center:[CAMPUS.lng,CAMPUS.lat],zoom:17.2,pitch:is3d?58:0,bearing:is3d?-18:0,duration:800}));
+  $('resetBtn').addEventListener('click',()=>map.flyTo({center:[CAMPUS.lng,CAMPUS.lat],zoom:18.7,pitch:is3d?58:0,bearing:is3d?-18:0,duration:800}));
   $('adminToggle').addEventListener('click',()=>{const open=$('adminPanel').classList.toggle('open');$('adminToggle').textContent=open?'− Hide organiser tools':'＋ Set checkpoint locations';if(open)toast('Choose a checkpoint, then click its real position on the map.')});
   $('placeToggle').addEventListener('click',()=>{placeMode=!placeMode; $('placeToggle').textContent=placeMode?'Cancel map placement':'Click map to place selected point';$('banner').classList.toggle('show',placeMode);$('map').style.cursor=placeMode?'crosshair':'';if(placeMode)toast('Placement active — click the exact location on the map.');});
   $('stationSelect').addEventListener('change',()=>{const p=PRESETS.find(p=>p.id===$('stationSelect').value);$('stationName').value='';if(p)$('stationName').placeholder=p.name});
