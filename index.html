@@ -220,7 +220,7 @@ import { OrbitControls } from 'https://esm.sh/three@0.160.0/examples/jsm/control
 const CAMPUS={lng:77.62029,lat:13.12461},Z=18;
 const host=document.getElementById('world3d'),badge=document.getElementById('world3dBadge');
 const scene=new THREE.Scene();scene.background=new THREE.Color(0x9dbdc0);scene.fog=new THREE.Fog(0x9dbdc0,600,1900);
-const camera=new THREE.PerspectiveCamera(48,innerWidth/innerHeight,.1,4500);camera.position.set(240,390,500);
+const camera=new THREE.PerspectiveCamera(48,innerWidth/innerHeight,.1,4500);camera.position.set(150,235,285);
 const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
 renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.6));renderer.setSize(innerWidth,innerHeight);
 renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;
@@ -266,7 +266,7 @@ function addBuilding(el){
  const height=Math.max(3,Math.min(65,hTag||levels*3.05||inferred[type]||6.5));
  let side=0xb4ac98,top=0xd4cdb8;if(['industrial','warehouse'].includes(type)){side=0x89948c;top=0xaab3a9}else if(['school','college','university'].includes(type)){side=0x9e9d8d;top=0xc8c2ad}else if(['office','commercial','retail'].includes(type)){side=0x9ea99e;top=0xc6d0c1}
  const g=new THREE.ExtrudeGeometry(shape,{depth:height,bevelEnabled:false,curveSegments:1});g.rotateX(-Math.PI/2);
- const mesh=new THREE.Mesh(g,[mat(side),mat(top)]);mesh.position.y=-.36;mesh.castShadow=true;mesh.receiveShadow=true;world.add(mesh);
+ const mesh=new THREE.Mesh(g,[mat(top),mat(side)]);mesh.position.y=-.36;mesh.castShadow=true;mesh.receiveShadow=true;world.add(mesh);
  const roofPts=pts.map(p=>new THREE.Vector3(p.x,height-.26,p.z));roofPts.push(roofPts[0]);world.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(roofPts),new THREE.LineBasicMaterial({color:0x485747,transparent:true,opacity:.72})));
  if(el.tags.name){const s=spriteLabel(el.tags.name);s.position.set(pts.reduce((v,p)=>v+p.x,0)/pts.length,height+3.5,-pts.reduce((v,p)=>v+p.z,0)/pts.length);world.add(s)}
  return true;
@@ -325,7 +325,7 @@ async function loadCampus(){
  for(const r of roads){try{const coords=r.geometry.map(p=>[p.lon,p.lat]),kind=r.tags.highway,path=['footway','path','pedestrian','steps','cycleway','bridleway'].includes(kind),width=path?(kind==='steps'?1:.95):(['motorway','trunk','primary'].includes(kind)?6:['secondary','tertiary'].includes(kind)?4.6:['residential','unclassified'].includes(kind)?3.4:2.2);lineRibbon(coords,width,path?footpath:asphalt);rc++}catch(e){}}
  trees.forEach(t=>{try{addTree(t)}catch(e){}});
  loaded=true;loading=false;
- badge.innerHTML='<strong>TRUE 3D CAMPUS WORLD</strong><br>'+bc+' mapped building footprints · '+rc+' mapped roads/paths<br>Building heights are approximate where map tags are absent';
+ badge.innerHTML='<strong>TRUE 3D CAMPUS WORLD</strong><br>'+bc+' mapped buildings · '+rc+' mapped roads/paths<br>Satellite ground + extruded buildings<br>Unknown heights estimated where map data is missing';
  if(window.__mp3dSnapshot)syncState(window.__mp3dSnapshot);if(window.__mp3dRouteCoords)drawRoute(window.__mp3dRouteCoords);
 }
 window.addEventListener('mp3d-sync',e=>syncState(e.detail));
