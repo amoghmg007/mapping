@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#090b0e" />
+  <title>MYSTERY PROTOCOL — Campus Navigator</title>
+  <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
+  <style>
+    :root{--bg:#080a0d;--panel:#101318;--panel2:#151a20;--line:#2a313b;--muted:#8d98a8;--text:#f2f5f8;--lime:#d6ff3f;--cyan:#58e4ff;--red:#ff666c;--radius:16px}
+    *{box-sizing:border-box}html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+    body{overflow:hidden}button,input,select{font:inherit}button{cursor:pointer;color:inherit}button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--lime);outline-offset:2px}
+    .app{height:100dvh;display:grid;grid-template-rows:64px 1fr;min-height:0}
+    header{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:0 22px;border-bottom:1px solid var(--line);background:#090b0e;z-index:10}
+    .brand{display:flex;align-items:center;gap:13px;min-width:0}.brand-mark{width:34px;height:34px;border:1px solid var(--lime);border-radius:10px;display:grid;place-items:center;color:var(--lime);font-weight:900;font-size:18px;box-shadow:0 0 22px #d6ff3f18}
+    .eyebrow{font-size:9px;letter-spacing:.24em;text-transform:uppercase;color:var(--muted);font-weight:800}.brand-title{font-size:13px;font-weight:900;letter-spacing:.12em;margin-top:3px}.header-right{display:flex;align-items:center;gap:10px}.live{font-size:10px;letter-spacing:.1em;color:var(--lime);border:1px solid #d6ff3f55;padding:8px 10px;border-radius:999px}
+    .layout{display:grid;grid-template-columns:310px 1fr;min-height:0}.sidebar{border-right:1px solid var(--line);background:linear-gradient(180deg,#101318,#0c0e12);padding:18px;display:flex;flex-direction:column;gap:16px;overflow:auto;z-index:3}
+    .section-label{display:flex;justify-content:space-between;align-items:center;color:#8792a0;font-size:10px;font-weight:800;letter-spacing:.17em;text-transform:uppercase;margin:0 0 10px}
+    .campus-card{padding:15px;border:1px solid #303843;border-radius:14px;background:linear-gradient(135deg,#192026,#101419);position:relative;overflow:hidden}.campus-card:after{content:"";position:absolute;width:110px;height:110px;border:1px solid #d6ff3f30;border-radius:50%;right:-44px;top:-45px;box-shadow:0 0 0 12px #d6ff3f08,0 0 0 24px #d6ff3f05}
+    .campus-card h1{font-size:15px;line-height:1.25;letter-spacing:.02em;margin:8px 0}.campus-card p{font-size:11px;line-height:1.55;color:#a1abb7;margin:0;max-width:225px}.chip{display:inline-flex;padding:5px 7px;border:1px solid #d6ff3f5c;color:var(--lime);border-radius:5px;font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
+    .segmented{display:grid;grid-template-columns:1fr 1fr;background:#080a0d;border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px}.segmented button{border:0;border-radius:7px;background:transparent;padding:9px 7px;color:var(--muted);font-size:11px;font-weight:800}.segmented button.active{background:var(--lime);color:#11150a}
+    .tools-row{display:flex;gap:7px}.tool-btn{flex:1;border:1px solid var(--line);background:#14181e;border-radius:9px;padding:9px 7px;font-size:10px;font-weight:750;color:#c0c9d3}.tool-btn:hover{border-color:#637080}.tool-btn.active{border-color:var(--cyan);color:var(--cyan);background:#58e4ff0b}
+    .checkpoint-list{display:flex;flex-direction:column;gap:7px}.checkpoint{display:grid;grid-template-columns:32px minmax(0,1fr) 18px;align-items:center;gap:10px;padding:9px;border:1px solid #272e37;background:#12161b;border-radius:11px;text-align:left;width:100%;transition:.15s}.checkpoint:hover{border-color:#65707e;transform:translateY(-1px)}.checkpoint.selected{border-color:var(--lime);background:#d6ff3f0b}.cp-index{height:30px;width:30px;border-radius:8px;background:#242b34;display:grid;place-items:center;font-size:11px;color:var(--lime);font-weight:900}.cp-name{font-size:11px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cp-sub{font-size:9px;color:var(--muted);margin-top:3px}.cp-state{width:8px;height:8px;border-radius:50%;background:#434d59}.cp-state.done{background:var(--lime);box-shadow:0 0 10px #d6ff3f70}
+    .empty{padding:14px;border:1px dashed #3a434f;border-radius:11px;color:#a0aab7;font-size:11px;line-height:1.55}.tiny-note{font-size:10px;color:#7f8997;line-height:1.55}
+    .admin-panel{border:1px solid #4b4a2a;background:#1c1b11;border-radius:12px;padding:12px;display:none}.admin-panel.open{display:block}.admin-panel p{font-size:10px;color:#c9c3a5;line-height:1.5;margin:7px 0 10px}.field{display:flex;flex-direction:column;gap:6px;margin:10px 0}.field label{font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:#a6afbb;font-weight:800}.field select,.field input{width:100%;background:#090b0e;border:1px solid #39424d;border-radius:8px;color:#eef2f7;padding:10px;font-size:11px}.primary{background:var(--lime);color:#11150a;border:0;border-radius:9px;padding:11px 12px;font-weight:900;font-size:11px;width:100%}.danger{background:#281619;border:1px solid #6b3037;color:#ff9ca1;border-radius:9px;padding:10px;font-weight:800;font-size:10px;width:100%;margin-top:7px}
+    .map-stage{position:relative;min-width:0;min-height:0;background:#11161b;isolation:isolate}.map{position:absolute;inset:0}.maplibregl-ctrl-bottom-right{bottom:40px}.maplibregl-ctrl-group{background:#11151b!important;border:1px solid #3a414a!important;box-shadow:0 4px 20px #0008!important}.maplibregl-ctrl-group button{background-color:#11151b!important}.maplibregl-ctrl-group button span{filter:invert(1)}.maplibregl-ctrl-attrib{background:#080a0dce!important;color:#b9c2cc!important}.maplibregl-ctrl-attrib a{color:#d6ff3f!important}
+    .map-top{position:absolute;top:17px;left:17px;right:17px;display:flex;justify-content:space-between;gap:12px;pointer-events:none;z-index:2}.map-top>*{pointer-events:auto}.search{display:flex;width:min(350px,52vw);background:#0a0d11ed;border:1px solid #35404c;border-radius:11px;overflow:hidden;box-shadow:0 8px 30px #0004}.search input{width:100%;min-width:0;background:transparent;border:0;padding:12px 13px;color:#f3f5f8;font-size:11px;outline:none}.search button{border:0;background:var(--lime);color:#121509;padding:0 14px;font-size:11px;font-weight:900}.map-badges{display:flex;gap:7px}.map-badge{border:1px solid #35404c;background:#0a0d11dd;border-radius:9px;padding:10px 12px;color:#aeb8c3;font-size:9px;letter-spacing:.1em;text-transform:uppercase;font-weight:800}
+    .map-bottom{position:absolute;bottom:17px;left:17px;right:17px;display:flex;justify-content:space-between;align-items:end;gap:10px;z-index:2;pointer-events:none}.map-bottom>*{pointer-events:auto}.coord-card{background:#0a0d11e8;border:1px solid #303a45;border-radius:10px;padding:9px 12px;max-width:min(330px,55vw)}.coord-label{font-size:8px;letter-spacing:.16em;color:#8692a0;text-transform:uppercase;font-weight:800}.coord-value{font-size:10px;margin-top:4px;color:#dde4ec;font-variant-numeric:tabular-nums}.floating-actions{display:flex;gap:8px}.float-btn{background:#10151beF;border:1px solid #45505d;border-radius:10px;padding:11px 13px;font-size:10px;font-weight:800;box-shadow:0 5px 22px #0004}.float-btn:hover{border-color:var(--lime)}.float-btn.accent{background:var(--lime);color:#11150a;border-color:var(--lime)}
+    .banner{position:absolute;top:77px;left:17px;z-index:2;max-width:360px;padding:10px 13px;border:1px solid #566132;background:#15190eea;border-radius:10px;font-size:10px;color:#dbe8a7;line-height:1.5;display:none}.banner.show{display:block}
+    .toast{position:absolute;left:50%;bottom:70px;transform:translate(-50%,15px);opacity:0;transition:.22s;pointer-events:none;z-index:8;background:#f4f6f8;color:#101318;border-radius:9px;padding:11px 15px;font-size:11px;font-weight:800;box-shadow:0 8px 30px #0004;max-width:calc(100% - 30px)}.toast.show{transform:translate(-50%,0);opacity:1}
+    .pin{width:34px;height:34px;position:relative;display:grid;place-items:center;border-radius:50% 50% 50% 6px;transform:rotate(-45deg);border:2px solid #f5f8fb;background:#20262e;color:white;box-shadow:0 5px 20px #0008}.pin span{transform:rotate(45deg);font-size:11px;font-weight:900}.pin.done{background:var(--lime);color:#111;border-color:#fff}.pin.selected{background:var(--cyan);color:#081014;border-color:white;box-shadow:0 0 0 6px #58e4ff2e,0 0 28px #58e4ff99}
+    .maplibregl-popup-content{background:#12171d;color:#eff4f8;border:1px solid #3a4551;border-radius:12px;padding:13px;min-width:180px;box-shadow:0 15px 35px #0008}.maplibregl-popup-tip{border-top-color:#12171d!important;border-bottom-color:#12171d!important}.popup-title{font-size:12px;font-weight:900;margin-bottom:5px}.popup-sub{font-size:10px;line-height:1.5;color:#a7b2be}.popup-actions{display:flex;gap:6px;margin-top:10px}.popup-actions button{border:1px solid #3b4652;border-radius:7px;background:#1c232a;padding:7px;color:#eaf0f6;font-size:10px;font-weight:800}.popup-actions .pop-done{background:var(--lime);color:#111;border-color:var(--lime)}
+    .footer-label{color:#66717f;font-size:9px;letter-spacing:.1em;text-transform:uppercase}
+    @media(max-width:800px){.app{grid-template-rows:56px 1fr}.layout{grid-template-columns:1fr;grid-template-rows:auto 1fr}.sidebar{order:2;border-right:0;border-top:1px solid var(--line);padding:10px 12px;gap:10px;max-height:37dvh}.map-stage{order:1;min-height:0}.brand-title{font-size:11px}.live{display:none}.campus-card{display:none}.sidebar .section-label{margin-bottom:7px}.checkpoint-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.checkpoint{padding:7px;gap:7px}.cp-index{height:28px;width:28px}.tiny-note{display:none}.admin-panel{padding:9px}.map-top{top:10px;left:10px;right:10px}.map-bottom{bottom:10px;left:10px;right:10px}.map-badges .map-badge:first-child{display:none}.banner{top:60px;left:10px}.coord-card{padding:8px}.floating-actions{gap:5px}.float-btn{padding:10px}.brand{gap:8px}header{padding:0 12px}.brand-mark{width:30px;height:30px}.section-label{font-size:9px}}
+    @media(max-width:430px){.map-badges .map-badge{padding:9px;font-size:8px}.search{width:min(240px,64vw)}.map-bottom{align-items:end}.coord-card{max-width:56vw}.coord-value{font-size:9px}.float-btn{font-size:9px;padding:10px 9px}.checkpoint-list{grid-template-columns:1fr 1fr}.cp-name{font-size:10px}.cp-sub{font-size:8px}.sidebar{max-height:39dvh}}
+  </style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand"><div class="brand-mark">M</div><div><div class="eyebrow">Tech Week · Dec 7—11, 2026</div><div class="brand-title">MYSTERY PROTOCOL <span style="color:var(--lime)">/ MAP SYSTEM</span></div></div></div>
+    <div class="header-right"><div class="live">● LIVE CAMPUS VIEW</div></div>
+  </header>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="campus-card"><div class="chip">FIELD NAVIGATION</div><h1>Brindavan College<br>of Engineering</h1><p>Dwarakanagar, Bagalur Main Road, Yelahanka, Bengaluru.</p></div>
+      <section>
+        <div class="section-label"><span>View mode</span><span>01 / MAP</span></div>
+        <div class="segmented"><button id="mode2d" class="active">▦ 2D MAP</button><button id="mode3d">◇ 3D TILT</button></div>
+        <div class="tools-row" style="margin-top:8px"><button id="satelliteBtn" class="tool-btn active">Satellite</button><button id="streetBtn" class="tool-btn">Street</button><button id="locateBtn" class="tool-btn">◎ Locate me</button></div>
+      </section>
+      <section>
+        <div class="section-label"><span>Mission checkpoints</span><span id="progressText">0 / 0</span></div>
+        <div id="checkpointList" class="checkpoint-list"></div>
+        <div id="emptyState" class="empty">No checkpoint coordinates have been confirmed yet. Turn on organiser mode, select a checkpoint, then click its exact position on the map using the campus video as reference.</div>
+      </section>
+      <section>
+        <div class="section-label"><span>Organizer tools</span><span>ADMIN</span></div>
+        <button id="adminToggle" class="tool-btn" style="width:100%">＋ Set checkpoint locations</button>
+        <div id="adminPanel" class="admin-panel">
+          <p>Pick a checkpoint and click the map where it actually sits. Locations stay on this device until you export them. No guessed building pins are preloaded.</p>
+          <div class="field"><label for="stationSelect">Checkpoint to place</label><select id="stationSelect">
+            <option value="start">Start point</option><option value="cp1">Checkpoint 01</option><option value="cp2">Checkpoint 02</option><option value="cp3">Checkpoint 03</option><option value="cp4">Checkpoint 04</option><option value="finish">Final point</option>
+          </select></div>
+          <div class="field"><label for="stationName">Display label (optional)</label><input id="stationName" maxlength="50" placeholder="e.g. CP-01" /></div>
+          <button class="primary" id="placeToggle">Click map to place selected point</button>
+          <button class="tool-btn" id="exportBtn" style="width:100%;margin-top:7px">Export map points (JSON)</button>
+          <button class="tool-btn" id="importBtn" style="width:100%;margin-top:7px">Import map points (JSON)</button>
+          <input type="file" id="importFile" accept=".json,application/json" hidden />
+          <button class="danger" id="clearBtn">Clear all locally saved locations</button>
+        </div>
+      </section>
+      <div class="tiny-note">Map imagery is provided by Esri / OpenStreetMap. The campus marker is a publicly mapped college point; internal checkpoints must be placed from the source video before this is used for live navigation.</div>
+      <div class="footer-label">Mystery Protocol · Navigation console v1.0</div>
+    </aside>
+    <main class="map-stage">
+      <div id="map" class="map" aria-label="Interactive campus map"></div>
+      <div class="map-top">
+        <form id="searchForm" class="search"><input id="searchInput" placeholder="Search place or address…" autocomplete="off" /><button type="submit">SEARCH</button></form>
+        <div class="map-badges"><div class="map-badge">BENGALURU / IN</div><div class="map-badge" id="mapModeBadge">2D VIEW</div></div>
+      </div>
+      <div class="banner" id="banner">Organiser placement mode is active. Click the real checkpoint position on the map to save it.</div>
+      <div class="map-bottom">
+        <div class="coord-card"><div class="coord-label">Cursor / map coordinates</div><div id="coordValue" class="coord-value">13.12461° N, 77.62029° E</div></div>
+        <div class="floating-actions"><button id="routeBtn" class="float-btn">↗ Route to selected</button><button id="resetBtn" class="float-btn accent">⌖ Campus</button></div>
+      </div>
+      <div id="toast" class="toast"></div>
+    </main>
+  </div>
+</div>
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script>
+(() => {
+  'use strict';
+  const CAMPUS = {lng:77.62029, lat:13.12461}; // OSM-mapped Brindavan College of Engineering point
+  const STORAGE_KEY = 'mystery-protocol-map-v1';
+  const PRESETS = [
+    {id:'start', name:'Start point', short:'S', kind:'start'},
+    {id:'cp1', name:'Checkpoint 01', short:'1', kind:'checkpoint'},
+    {id:'cp2', name:'Checkpoint 02', short:'2', kind:'checkpoint'},
+    {id:'cp3', name:'Checkpoint 03', short:'3', kind:'checkpoint'},
+    {id:'cp4', name:'Checkpoint 04', short:'4', kind:'checkpoint'},
+    {id:'finish', name:'Final point', short:'F', kind:'finish'}
+  ];
+  let saved = loadSaved();
+  let selectedId = null, currentPosition = null, placeMode = false, is3d = false, satellite = true;
+  let markerRecords = new Map(), campusMarker = null, userMarker = null, routeSourceReady = false, toastTimer;
+  const $ = id => document.getElementById(id);
+  const map = new maplibregl.Map({
+    container:'map',
+    center:[CAMPUS.lng,CAMPUS.lat],
+    zoom:17.2, pitch:0, bearing:0,
+    antialias:true,
+    style:{
+      version:8,
+      sources:{
+        imagery:{type:'raster',tiles:['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],tileSize:256,attribution:'Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community'},
+        osm:{type:'raster',tiles:['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],tileSize:256,attribution:'© OpenStreetMap contributors'},
+        terrain:{type:'raster-dem',tiles:['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],tileSize:256,encoding:'terrarium',maxzoom:15}
+      },
+      layers:[
+        {id:'satellite',type:'raster',source:'imagery',layout:{visibility:'visible'}},
+        {id:'street',type:'raster',source:'osm',layout:{visibility:'none'},paint:{'raster-opacity':0.96}}
+      ],
+      terrain:{source:'terrain',exaggeration:1.15}
+    }
+  });
+  map.addControl(new maplibregl.NavigationControl({visualizePitch:true}),'bottom-right');
+  map.addControl(new maplibregl.ScaleControl({maxWidth:110,unit:'metric'}),'bottom-left');
+  map.on('load', () => {
+    addCampusMarker();
+    renderCheckpoints();
+    updateCoords(CAMPUS.lng,CAMPUS.lat);
+    if (saved.some(p=>p.lng && p.lat)) {
+      const placed = saved.filter(p=>Number.isFinite(p.lng)&&Number.isFinite(p.lat));
+      if (placed.length) fitToPoints(placed);
+    }
+  });
+  map.on('mousemove', e => updateCoords(e.lngLat.lng,e.lngLat.lat));
+  map.on('click', e => {
+    if (!placeMode) return;
+    const preset = PRESETS.find(p=>p.id===$('stationSelect').value);
+    if (!preset) return;
+    const name = $('stationName').value.trim() || preset.name;
+    saved = saved.filter(p=>p.id!==preset.id);
+    saved.push({...preset,name,lng:e.lngLat.lng,lat:e.lngLat.lat,done:false});
+    persist(); selectCheckpoint(preset.id); renderCheckpoints();
+    const marker = markerRecords.get(preset.id);
+    if (marker) marker.togglePopup();
+    placeMode = false; $('placeToggle').textContent='Click map to place selected point';
+    $('banner').classList.remove('show');
+    toast(name+' saved at '+e.lngLat.lat.toFixed(5)+', '+e.lngLat.lng.toFixed(5));
+  });
+  function loadSaved(){try {const value=JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]'); return Array.isArray(value)?value.filter(x=>x&&typeof x.id==='string'):[]} catch{return []}}
+  function persist(){localStorage.setItem(STORAGE_KEY,JSON.stringify(saved))}
+  function toast(message){const node=$('toast');node.textContent=message;node.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>node.classList.remove('show'),2800)}
+  function updateCoords(lng,lat){$('coordValue').textContent=lat.toFixed(5)+'° '+(lat>=0?'N':'S')+', '+lng.toFixed(5)+'° '+(lng>=0?'E':'W')}
+  function addCampusMarker(){
+    const el=document.createElement('div'); el.style.cssText='width:15px;height:15px;border-radius:50%;background:#d6ff3f;border:3px solid #fff;box-shadow:0 0 0 7px #d6ff3f32,0 0 28px #d6ff3f99';
+    campusMarker=new maplibregl.Marker({element:el,anchor:'center'}).setLngLat([CAMPUS.lng,CAMPUS.lat]).setPopup(new maplibregl.Popup({offset:15}).setHTML('<div class="popup-title">Brindavan College of Engineering</div><div class="popup-sub">Publicly mapped college location. Internal pathways/checkpoints are not inferred from this marker.</div><div class="popup-sub" style="margin-top:7px">13.12461, 77.62029</div>')).addTo(map);
+  }
+  function createPin(item){
+    const el=document.createElement('div'); el.className='pin'+(item.done?' done':'')+(item.id===selectedId?' selected':'');
+    const span=document.createElement('span');span.textContent=item.short||'•';el.appendChild(span);
+    el.title=item.name;
+    const marker=new maplibregl.Marker({element:el,anchor:'bottom'}).setLngLat([item.lng,item.lat]).addTo(map);
+    marker.setPopup(new maplibregl.Popup({offset:18,closeButton:true}).setHTML(
+      '<div class="popup-title">'+escapeHtml(item.name)+'</div><div class="popup-sub">'+(item.done?'Status: completed':'Status: not completed')+'</div>'+
+      '<div class="popup-sub" style="margin-top:5px">'+item.lat.toFixed(5)+', '+item.lng.toFixed(5)+'</div>'+
+      '<div class="popup-actions"><button onclick="window.mpSelect(\''+item.id+'\')">Select</button><button class="pop-done" onclick="window.mpDone(\''+item.id+'\')">'+(item.done?'Undo':'Complete')+'</button></div>'
+    ));
+    el.addEventListener('click',()=>selectCheckpoint(item.id));
+    markerRecords.set(item.id,marker);
+  }
+  function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+  function renderCheckpoints(){
+    markerRecords.forEach(m=>m.remove());markerRecords.clear();
+    const placed=saved.filter(p=>Number.isFinite(p.lng)&&Number.isFinite(p.lat));
+    placed.forEach(createPin);
+    const list=$('checkpointList');list.innerHTML='';
+    $('emptyState').style.display=placed.length?'none':'block';
+    $('progressText').textContent=placed.filter(p=>p.done).length+' / '+placed.length;
+    placed.forEach((p,i)=>{
+      const b=document.createElement('button');b.className='checkpoint'+(p.id===selectedId?' selected':'');b.type='button';
+      const n=document.createElement('div');n.className='cp-index';n.textContent=p.short||String(i+1);
+      const info=document.createElement('div');const name=document.createElement('div');name.className='cp-name';name.textContent=p.name;
+      const sub=document.createElement('div');sub.className='cp-sub';sub.textContent=p.done?'COMPLETED':'PINNED LOCATION';
+      info.append(name,sub);const state=document.createElement('div');state.className='cp-state'+(p.done?' done':'');
+      b.append(n,info,state);b.addEventListener('click',()=>{selectCheckpoint(p.id);map.flyTo({center:[p.lng,p.lat],zoom:18.5,duration:750});const m=markerRecords.get(p.id);if(m)m.togglePopup()});list.appendChild(b);
+    });
+    if(selectedId&&!placed.some(p=>p.id===selectedId))selectedId=null;
+  }
+  function selectCheckpoint(id){selectedId=id;renderCheckpoints()}
+  function fitToPoints(points){const b=new maplibregl.LngLatBounds();points.forEach(p=>b.extend([p.lng,p.lat]));if(points.length===1)b.extend([points[0].lng+.001,points[0].lat+.001]);map.fitBounds(b,{padding:90,maxZoom:18,duration:500})}
+  window.mpSelect=id=>{selectCheckpoint(id);const p=saved.find(p=>p.id===id);if(p)map.flyTo({center:[p.lng,p.lat],zoom:18,duration:400})};
+  window.mpDone=id=>{const p=saved.find(p=>p.id===id);if(!p)return;p.done=!p.done;persist();renderCheckpoints();toast(p.done?'Checkpoint marked complete':'Checkpoint marked incomplete')};
+  $('mode2d').addEventListener('click',()=>{is3d=false;map.easeTo({pitch:0,bearing:0,duration:650});$('mode2d').classList.add('active');$('mode3d').classList.remove('active');$('mapModeBadge').textContent='2D VIEW'});
+  $('mode3d').addEventListener('click',()=>{is3d=true;map.easeTo({pitch:58,bearing:-18,duration:850});$('mode3d').classList.add('active');$('mode2d').classList.remove('active');$('mapModeBadge').textContent='3D TILT'});
+  function setBasemap(isSatellite){satellite=isSatellite;map.setLayoutProperty('satellite','visibility',isSatellite?'visible':'none');map.setLayoutProperty('street','visibility',isSatellite?'none':'visible');$('satelliteBtn').classList.toggle('active',isSatellite);$('streetBtn').classList.toggle('active',!isSatellite)}
+  $('satelliteBtn').addEventListener('click',()=>setBasemap(true));$('streetBtn').addEventListener('click',()=>setBasemap(false));
+  $('resetBtn').addEventListener('click',()=>map.flyTo({center:[CAMPUS.lng,CAMPUS.lat],zoom:17.2,pitch:is3d?58:0,bearing:is3d?-18:0,duration:800}));
+  $('adminToggle').addEventListener('click',()=>{const open=$('adminPanel').classList.toggle('open');$('adminToggle').textContent=open?'− Hide organiser tools':'＋ Set checkpoint locations';if(open)toast('Choose a checkpoint, then click its real position on the map.')});
+  $('placeToggle').addEventListener('click',()=>{placeMode=!placeMode; $('placeToggle').textContent=placeMode?'Cancel map placement':'Click map to place selected point';$('banner').classList.toggle('show',placeMode);$('map').style.cursor=placeMode?'crosshair':'';if(placeMode)toast('Placement active — click the exact location on the map.');});
+  $('stationSelect').addEventListener('change',()=>{const p=PRESETS.find(p=>p.id===$('stationSelect').value);$('stationName').value='';if(p)$('stationName').placeholder=p.name});
+  $('clearBtn').addEventListener('click',()=>{if(!confirm('Delete every saved checkpoint and completion status from this browser?'))return;saved=[];selectedId=null;persist();renderCheckpoints();removeRoute();toast('Local checkpoint data cleared')});
+  $('exportBtn').addEventListener('click',()=>{const blob=new Blob([JSON.stringify({title:'Mystery Protocol checkpoints',campus:CAMPUS,checkpoints:saved},null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='mystery-protocol-map-points.json';a.click();URL.revokeObjectURL(url);toast('Checkpoint JSON exported')});
+  $('importBtn').addEventListener('click',()=>$('importFile').click());
+  $('importFile').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;try{const obj=JSON.parse(await f.text());const items=Array.isArray(obj)?obj:obj.checkpoints;if(!Array.isArray(items))throw Error('No checkpoints array');saved=items.filter(p=>p&&typeof p.id==='string'&&Number.isFinite(+p.lng)&&Number.isFinite(+p.lat)).map(p=>({...p,lng:+p.lng,lat:+p.lat,done:!!p.done}));persist();renderCheckpoints();if(saved.length)fitToPoints(saved);toast('Imported '+saved.length+' checkpoint locations')}catch(err){toast('Invalid JSON: '+err.message)}e.target.value=''});
+  $('locateBtn').addEventListener('click',()=>{if(!navigator.geolocation){toast('Location is not supported by this browser');return}toast('Requesting current location…');navigator.geolocation.getCurrentPosition(pos=>{currentPosition={lng:pos.coords.longitude,lat:pos.coords.latitude};if(userMarker)userMarker.remove();const el=document.createElement('div');el.style.cssText='width:15px;height:15px;border-radius:50%;background:#58e4ff;border:3px solid white;box-shadow:0 0 0 7px #58e4ff33,0 0 22px #58e4ffcc';userMarker=new maplibregl.Marker({element:el}).setLngLat([currentPosition.lng,currentPosition.lat]).setPopup(new maplibregl.Popup().setText('Your current location')).addTo(map);map.flyTo({center:[currentPosition.lng,currentPosition.lat],zoom:18,duration:700});toast('Current location found')},err=>toast(err.code===1?'Location permission denied': 'Could not get your location. Check GPS/network.'),{enableHighAccuracy:true,timeout:12000,maximumAge:15000})});
+  function removeRoute(){if(map.getLayer('route-line'))map.removeLayer('route-line');if(map.getSource('route'))map.removeSource('route');routeSourceReady=false}
+  async function routeToSelected(){
+    const dest=saved.find(p=>p.id===selectedId&&Number.isFinite(p.lng)&&Number.isFinite(p.lat));
+    if(!dest){toast('Place and select a checkpoint first');return}
+    if(!currentPosition){toast('First tap Locate me and allow location access');return}
+    $('routeBtn').textContent='Routing…';$('routeBtn').disabled=true;
+    try{
+      const u='https://router.project-osrm.org/route/v1/foot/'+currentPosition.lng+','+currentPosition.lat+';'+dest.lng+','+dest.lat+'?overview=full&geometries=geojson&steps=true';
+      const res=await fetch(u);if(!res.ok)throw Error('Routing service unavailable');const data=await res.json();if(data.code!=='Ok'||!data.routes?.length)throw Error('No walking route found');
+      removeRoute();map.addSource('route',{type:'geojson',data:{type:'Feature',properties:{},geometry:data.routes[0].geometry}});
+      map.addLayer({id:'route-line',type:'line',source:'route',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#d6ff3f','line-width':5,'line-opacity':.93,'line-blur':.15}});
+      const route=data.routes[0];toast('Route ready · '+(route.distance>=1000?(route.distance/1000).toFixed(1)+' km':Math.round(route.distance)+' m')+' · '+Math.round(route.duration/60)+' min (estimate)');
+      const b=new maplibregl.LngLatBounds();route.geometry.coordinates.forEach(c=>b.extend(c));map.fitBounds(b,{padding:{top:90,bottom:90,left:65,right:65},duration:800});
+    }catch(e){toast(e.message||'Could not calculate route; check network and try again')}
+    finally{$('routeBtn').textContent='↗ Route to selected';$('routeBtn').disabled=false}
+  }
+  $('routeBtn').addEventListener('click',routeToSelected);
+  $('searchForm').addEventListener('submit',async e=>{e.preventDefault();const q=$('searchInput').value.trim();if(!q)return;const btn=e.currentTarget.querySelector('button');btn.textContent='…';try{const r=await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q='+encodeURIComponent(q));const d=await r.json();if(!d.length)throw Error('No matching place found');const p=d[0];map.flyTo({center:[+p.lon,+p.lat],zoom:17,duration:850});toast(p.display_name.split(',').slice(0,3).join(','))}catch(err){toast(err.message||'Search failed; try again')}finally{btn.textContent='SEARCH'}});
+})();
+</script>
+</body>
+</html>
