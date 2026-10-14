@@ -142,7 +142,7 @@ async function animatePreviewRoute(coords,target){
   }
  },95);
 }
-function routeToSelected(){
+async function routeToSelected(){
  const p=stored.checkpoints.find(p=>p.id===activeId);
  if(!p){toast('Select a checkpoint to navigate');return}
  if(!player){toast('Enter preview mode or enable GPS first');return}
