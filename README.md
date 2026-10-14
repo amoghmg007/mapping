@@ -1,34 +1,31 @@
 # Mystery Protocol — Campus Expedition
 
-A browser-based, Pokémon GO-inspired campus exploration interface for Tech Week.
+A browser-based campus exploration experience for Tech Week at Brindavan College of Engineering.
 
-## Open a preview
-The static app entry point is `index.html`. A quick hosted preview is available with a static raw-file host; permanent GitHub Pages hosting requires Pages to be enabled for this repository.
+## Open the app
+- Entry point: `index.html`
+- Preview: use the commit-pinned static preview URL shared in the project conversation.
+- Permanent GitHub Pages hosting requires Pages to be enabled in repository settings.
 
-## Current features
-- Satellite and street-map base layers centered on Brindavan College of Engineering.
-- 2D top-down and 3D tilted views, plus extruded building footprints loaded from OpenStreetMap when data is available.
-- Animated player avatar, pulsing mission beacons, level/XP HUD, scan pulse, mission journal and checkpoint completion.
-- GPS location tracking (requires browser permission and HTTPS).
-- Organiser console to place checkpoints at verified campus locations; checkpoint locations are not fabricated.
-- Walking-route display using public OpenStreetMap routing services; preview mode can animate the avatar along the calculated route.
-- JSON import/export for checkpoint setup and transfer between devices. Checkpoints and XP are stored locally in the current browser.
+## Map modes
+- **2D:** draggable satellite/street map with campus landmarks, zoom, GPS, discovery progress, and route guidance.
+- **3D:** an independent Three.js WebGL world. Satellite tiles are placed on the ground plane; OSM building footprints are extruded into walls/roofs; mapped roads and paths are built as geometry; the orbit camera can rotate, tilt, pan, and zoom.
+- The player avatar and mission beacons render as actual 3D objects and sync with the 2D map state.
 
-## Preview
-Open `index.html` through a static host or run any static file server in this directory.
+## Gameplay
+- The map starts with five real public-map landmarks: Engineering College, IS & CS Block, Architecture Block, College Canteen, and Boys Hostel II.
+- Visit a landmark with GPS enabled to log a discovery and earn XP. Preview mode supports manual free-roam testing.
+- The Organiser console adds/removes points at map-selected positions and imports/exports checkpoint JSON.
+- Checkpoint locations and progress are saved locally in the browser.
+- Walking routes use public OpenStreetMap-based routing services.
 
-## Enable permanent GitHub Pages hosting
-1. Open repository **Settings → Pages**.
-2. Under Build and deployment, choose **GitHub Actions** as the source.
-3. Open **Actions → Deploy Mystery Protocol Map → Run workflow**.
+## Accuracy and sources
+- Initial focus: publicly mapped Brindavan College of Engineering location, 13.12461, 77.62029.
+- Building footprints, building names and road geometry come from OpenStreetMap contributors.
+- Landmark coordinate records are from public place/map listings; organisers should validate any event-specific clue route on campus before the event.
+- Where a building has no height tag, its height is estimated for visualisation. The 3D scene models the mapped footprint, not interior room layout or an official architectural BIM model.
 
-The deployment workflow is manual because GitHub Pages is not currently enabled on the repository. The workflow cannot enable Pages itself without the repository's Pages administration permission.
-
-## Campus accuracy
-The initial camera is centered on the publicly mapped college location. 3D building shapes depend on available OpenStreetMap footprints. Organiser must place event checkpoints using the actual campus reference/video before the app is used for live event navigation.
-
-## Data services
-Map imagery: Esri World Imagery (attribution shown on map).
-Street map and building footprints: OpenStreetMap contributors.
-Elevation: AWS Terrain Tiles.
-Walking routes: public OpenStreetMap-based routing services.
+## Data services and attribution
+- Satellite imagery: Esri World Imagery (attribution in map UI).
+- Street map, building footprints, mapped roads/trees: © OpenStreetMap contributors.
+- Walking routes: public OpenStreetMap-based routing services.
