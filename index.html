@@ -74,14 +74,22 @@
 (() => {
 'use strict';
 const CAMPUS={lng:77.62029,lat:13.12461};
-const KEY='mystery-protocol-expedition-v2';
+const KEY='mystery-protocol-expedition-v3';
 const PRESETS=[
-{id:'start',name:'Expedition start',short:'S',kind:'start'},
-{id:'cp1',name:'Mystery beacon 01',short:'01',kind:'checkpoint'},
-{id:'cp2',name:'Mystery beacon 02',short:'02',kind:'checkpoint'},
-{id:'cp3',name:'Mystery beacon 03',short:'03',kind:'checkpoint'},
-{id:'cp4',name:'Mystery beacon 04',short:'04',kind:'checkpoint'},
+{id:'start',name:'Engineering College',short:'S',kind:'start'},
+{id:'cp1',name:'IS & CS Block',short:'01',kind:'checkpoint'},
+{id:'cp2',name:'Architecture Block',short:'02',kind:'checkpoint'},
+{id:'cp3',name:'College Canteen',short:'03',kind:'checkpoint'},
+{id:'cp4',name:'Boys Hostel II',short:'04',kind:'checkpoint'},
 {id:'finish',name:'Final discovery',short:'F',kind:'finish'}];
+// Real, publicly mapped campus landmarks. Coordinates are from the listed place records, not guessed event clue points.
+const DEFAULT_CHECKPOINTS=[
+{...PRESETS[0],lng:77.62029,lat:13.12461,done:false},
+{...PRESETS[1],lng:77.62077,lat:13.12481,done:false},
+{...PRESETS[2],lng:77.62025,lat:13.12412,done:false},
+{...PRESETS[3],lng:77.6202242,lat:13.1237984,done:false},
+{...PRESETS[4],lng:77.62014,lat:13.12566,done:false}
+];
 let stored=loadData(),player=null,playerMarker=null,playerHeading=0,tracking=null,watching=false,activeId=null,preview=false,placing=false,view3d=false,scanTimer=null,toastTimer=null,xp=Number(stored.xp)||0,scanOn=false,routeCoordinates=null,walkTimer=null;
 const $=id=>document.getElementById(id);
 function sync3D(){const snapshot={checkpoints:stored.checkpoints,player:player,activeId:activeId,preview:preview,xp:xp};window.__mp3dSnapshot=snapshot;window.dispatchEvent(new CustomEvent('mp3d-sync',{detail:snapshot}))}
@@ -117,7 +125,7 @@ function handleWorldClick(lng,lat){
 window.addEventListener('mp3d-world-click',e=>{if(!e.detail)return;handleWorldClick(e.detail.lng,e.detail.lat)});
 
 map.on('rotate',()=>{if(map.getBearing()!==0)$('compassBtn').classList.add('active');else $('compassBtn').classList.remove('active')});
-function loadData(){try{const d=JSON.parse(localStorage.getItem(KEY)||'{}');return{checkpoints:Array.isArray(d.checkpoints)?d.checkpoints:[],done:Array.isArray(d.done)?d.done:[],xp:d.xp||0}}catch{return{checkpoints:[],done:[],xp:0}}}
+function loadData(){try{const raw=localStorage.getItem(KEY)||localStorage.getItem('mystery-protocol-expedition-v2')||'{}';const d=JSON.parse(raw);const points=Array.isArray(d.checkpoints)?d.checkpoints:[];return{checkpoints:points.length?points:DEFAULT_CHECKPOINTS.map(p=>({...p})),done:Array.isArray(d.done)?d.done:[],xp:d.xp||0}}catch{return{checkpoints:DEFAULT_CHECKPOINTS.map(p=>({...p})),done:[],xp:0}}}
 function persist(){localStorage.setItem(KEY,JSON.stringify(stored))}
 function toast(s){const t=$('toast');t.textContent=s;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),2600)}
 function escape(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
@@ -132,11 +140,11 @@ function renderAll(){
  if(player)playerMarker=new maplibregl.Marker({element:playerElement(),anchor:'bottom',rotationAlignment:'map'}).setLngLat(player).addTo(map);
  updateQuest();sync3D()
 }
-function select(id){activeId=id;renderAll();const p=stored.checkpoints.find(x=>x.id===id);if(p)showBeacon(p);else{$('nearbyTitle').textContent='Campus expedition';$('nearbySub').textContent='Use organiser mode to place verified mission beacons.'}}
+function select(id){activeId=id;renderAll();const p=stored.checkpoints.find(x=>x.id===id);if(p){showBeacon(p);window.dispatchEvent(new CustomEvent('mp3d-focus',{detail:{lng:+p.lng,lat:+p.lat}}))}else{$('nearbyTitle').textContent='Campus expedition';$('nearbySub').textContent='Choose one of the mapped campus landmarks.'}}
 function showBeacon(p){$('nearbyKicker').textContent=p.done?'DISCOVERY COMPLETE':'MISSION BEACON · '+(p.short||p.id.toUpperCase());$('nearbyTitle').textContent=p.name;$('nearbySub').textContent=p.lat.toFixed(5)+', '+p.lng.toFixed(5)+' · '+(p.done?'Collected':'Tap navigate to travel here');$('missionTitle').textContent=p.name;$('missionCopy').textContent=p.done?'You have collected this discovery. Keep exploring for the next beacon.':'Move close to this beacon, then confirm discovery when you are on site.';$('missionStatus').textContent=p.done?'DISCOVERED + XP':'DISTANCE / GPS CHECK';$('missionBtn').textContent=p.done?'COLLECTED ✓':'NAVIGATE ↗';$('missionBtn').disabled=!!p.done}
-function updateQuest(){const total=stored.checkpoints.length,done=stored.checkpoints.filter(p=>p.done).length;$('questCount').textContent=done+' / '+total;$('questFill').style.width=(total?done/total*100:0)+'%';$('questHint').textContent=total?(done===total?'All configured beacons discovered. Expedition complete!':'Discover '+(total-done)+' more beacon'+(total-done===1?'':'s')+' to finish the field research.'):'No mission beacons placed yet. Organiser must set exact locations from the campus reference.';if(!activeId){$('missionTitle').textContent=preview?'Free roam · Preview mode':'Explore the campus';$('missionCopy').textContent=preview?'Tap anywhere on the map to move your avatar and preview the game loop.':'Enter preview mode to test the game, or enable GPS to use your real position.';$('missionStatus').textContent=preview?'TAP MAP TO MOVE':'WAITING FOR PLAYER';$('missionBtn').textContent=preview?'SCAN THIS AREA':'START ▶';$('missionBtn').disabled=false}}
+function updateQuest(){const total=stored.checkpoints.length,done=stored.checkpoints.filter(p=>p.done).length;$('questCount').textContent=done+' / '+total;$('questFill').style.width=(total?done/total*100:0)+'%';$('questHint').textContent=total?(done===total?'All configured beacons discovered. Expedition complete!':'Discover '+(total-done)+' more beacon'+(total-done===1?'':'s')+' to finish the field research.'):'Campus landmark data is ready. Discover a landmark to earn XP; organisers can add event-specific clues when confirmed.';if(!activeId){$('missionTitle').textContent=preview?'Free roam · Preview mode':'Explore the campus';$('missionCopy').textContent=preview?'Tap anywhere on the map to move your avatar and preview the game loop.':'Enter preview mode to test the game, or enable GPS to use your real position.';$('missionStatus').textContent=preview?'TAP MAP TO MOVE':'WAITING FOR PLAYER';$('missionBtn').textContent=preview?'SCAN THIS AREA':'START ▶';$('missionBtn').disabled=false}}
 function updateStats(){const level=Math.floor(xp/250)+1;$('trainerLevel').textContent='LVL '+String(level).padStart(2,'0');$('xpValue').textContent=String(xp).padStart(3,'0')+' XP';$('xpFill').style.width=(xp%250)/250*100+'%';persist()}
-function movePreview(ll){player=ll;preview=true;if(playerMarker)playerMarker.remove();playerMarker=new maplibregl.Marker({element:playerElement(),anchor:'bottom'}).setLngLat(player).addTo(map);$('enterBtn').innerHTML='<span>◉</span> Preview active';$('nearbyKicker').textContent='FREE ROAM';$('nearbyTitle').textContent='Player moved';$('nearbySub').textContent=ll[1].toFixed(5)+', '+ll[0].toFixed(5)+' · tap map to move again';updateQuest();sync3D()}
+function movePreview(ll){player=ll;preview=true;if(playerMarker)playerMarker.remove();playerMarker=new maplibregl.Marker({element:playerElement(),anchor:'bottom'}).setLngLat(player).addTo(map);$('enterBtn').innerHTML='<span>◉</span> Preview active';$('nearbyKicker').textContent='FREE ROAM';$('nearbyTitle').textContent='Player moved';$('nearbySub').textContent=ll[1].toFixed(5)+', '+ll[0].toFixed(5)+' · tap map to move again';updateQuest();updateNearbyDistance();sync3D()}
 function enterExpedition(){if(player){map.flyTo({center:player,zoom:19,pitch:view3d?65:0,duration:700});toast('Expedition resumed');return;}preview=true;movePreview([CAMPUS.lng,CAMPUS.lat]);map.flyTo({center:player,zoom:19,pitch:view3d?65:0,duration:900});toast('Preview mode: tap anywhere on the map to walk the avatar.')}
 function setView3D(on){
  view3d=on;
